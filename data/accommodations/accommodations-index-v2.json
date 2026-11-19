@@ -1126,5 +1126,19 @@
     "guests": 12,
     "bedrooms": 5,
     "bathrooms": 4
+  },
+  {
+    "id": "prime_luxury_villa_in_nea_vrasna",
+    "zone": "Olympiada",
+    "beachSlug": "nea-vrasna-beach",
+    "titleEn": "Prime Luxury Villa in Nea Vrasna",
+    "titleRo": "Prime Luxury Villa in Nea Vrasna",
+    "image": "https://raw.githubusercontent.com/gabridim18-lab/halkidiki-data/main/data/accommodations/prime_luxury_villa_in_nea_vrasna/images/prime_luxury_villa_in_nea_vrasna.webp",
+    "category": "family_friendly",
+    "rating": 9.9,
+    "featured": true,
+    "guests": 10,
+    "bedrooms": 4,
+    "bathrooms": 2
   }
 ]
