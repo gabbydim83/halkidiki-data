@@ -1168,5 +1168,19 @@
     "guests": 4,
     "bedrooms": 1,
     "bathrooms": 1
+  },
+  {
+    "id": "deluxe_suite_in_nea_kallikrateia",
+    "zone": "Thessaloniki",
+    "beachSlug": "vergia-beach",
+    "titleEn": "Deluxe Suite in Nea Kallikrateia",
+    "titleRo": "Deluxe Suite in Nea Kallikrateia",
+    "image": "https://raw.githubusercontent.com/gabridim18-lab/halkidiki-data/main/data/accommodations/deluxe_suite_in_nea_kallikrateia/images/deluxe_suite_in_nea_kallikrateia.webp",
+    "category": "family_friendly",
+    "rating": 10.0,
+    "featured": false,
+    "guests": 4,
+    "bedrooms": 1,
+    "bathrooms": 1
   }
 ]
