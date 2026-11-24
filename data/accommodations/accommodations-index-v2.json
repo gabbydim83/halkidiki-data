@@ -1182,5 +1182,19 @@
     "guests": 4,
     "bedrooms": 1,
     "bathrooms": 1
+  },
+  {
+    "id": "standard_suite_in_nea_kallikrateia",
+    "zone": "Thessaloniki",
+    "beachSlug": "vergia-beach",
+    "titleEn": "Standard Suite in Nea Kallikrateia",
+    "titleRo": "Standard Suite in Nea Kallikrateia",
+    "image": "https://raw.githubusercontent.com/gabridim18-lab/halkidiki-data/main/data/accommodations/standard_suite_in_nea_kallikrateia/images/standard_suite_in_nea_kallikrateia.webp",
+    "category": "family_friendly",
+    "rating": 10.0,
+    "featured": false,
+    "guests": 4,
+    "bedrooms": 2,
+    "bathrooms": 1
   }
 ]
