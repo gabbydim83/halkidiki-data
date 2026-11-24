@@ -26,12 +26,12 @@ def save_json(path: Path, data: dict):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
-def ensure_1200x800_webp(src_path: Path, dst_path: Path):
+def ensure_1920x1080_webp(src_path: Path, dst_path: Path):
     dst_path.parent.mkdir(parents=True, exist_ok=True)
     with Image.open(src_path) as im:
         im = im.convert("RGB")
 
-        target_w, target_h = 1200, 800
+        target_w, target_h = 1920, 1080
         src_w, src_h = im.size
         src_ratio = src_w / src_h
         target_ratio = target_w / target_h
@@ -275,7 +275,7 @@ class App(tk.Tk):
         img_box.pack(fill="both", expand=True)
 
         ttk.Button(img_box, text="Select source images…", command=self.pick_images).pack(fill="x")
-        ttk.Label(img_box, text="(jpg/png/webp; will be converted to 1200x800 WEBP)").pack(anchor="w", pady=(6,10))
+        ttk.Label(img_box, text="(jpg/png/webp; will be converted to 1920x1080 WEBP)").pack(anchor="w", pady=(6,10))
 
         self.lbl_count = ttk.Label(img_box, text="Selected: 0 images")
         self.lbl_count.pack(anchor="w")
@@ -341,7 +341,7 @@ class App(tk.Tk):
         try:
             with Image.open(path) as im:
                 im = im.convert("RGB")
-                im.thumbnail((360, 240))
+                im.thumbnail((480, 270))
                 self.preview_imgtk = ImageTk.PhotoImage(im)
                 self.lbl_preview.configure(image=self.preview_imgtk)
         except Exception as e:
@@ -398,7 +398,7 @@ class App(tk.Tk):
             suffix = "" if i == 0 else str(i)
             dst_name = f"{acc_id}{suffix}.webp"
             dst = images_dir / dst_name
-            ensure_1200x800_webp(Path(src), dst)
+            ensure_1920x1080_webp(Path(src), dst)
             out_files.append(dst_name)
 
         image_urls = [f"{REPO_RAW_BASE}/data/accommodations/{acc_id}/images/{name}" for name in out_files]
