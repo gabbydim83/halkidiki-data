@@ -49,6 +49,22 @@ def ensure_1920x1080_webp(src_path: Path, dst_path: Path):
         im = im.resize((target_w, target_h), Image.LANCZOS)
         im.save(dst_path, format="WEBP", quality=82, method=6)
 
+def parse_coordinates(text: str):
+    text = text.strip()
+    if not text:
+        return 0.0, 0.0
+    parts = re.split(r"\s*,\s*|\s+", text.strip("() "))
+    if len(parts) != 2:
+        raise ValueError("Introdu coordonatele în formatul: 40.123456, 23.123456")
+    try:
+        lat, lon = map(float, parts)
+    except ValueError:
+        raise ValueError("Coordonatele GPS trebuie să fie numere zecimale.")
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        raise ValueError("Coordonate GPS în afara intervalului valid.")
+    return lat, lon
+
+
 def parse_float(s: str, default=0.0):
     try:
         return float(s.strip())
@@ -109,24 +125,49 @@ class App(tk.Tk):
         self._build_ui()
 
     def _build_ui(self):
-        root = ttk.Frame(self, padding=12)
+        root = ttk.Frame(self, padding=8)
         root.pack(fill="both", expand=True)
 
-        # layout: left form, right images/preview
-        left = ttk.Frame(root)
-        left.pack(side="left", fill="both", expand=True, padx=(0, 10))
+        # Fixed toolbar: never competes with the image preview or form.
+        actions = ttk.Frame(root)
+        actions.pack(side="top", fill="x", pady=(0, 4))
+        ttk.Button(actions, text="Validate", command=self.validate_only).pack(side="left", padx=(0, 8))
+        ttk.Button(actions, text="Generate files", command=self.generate).pack(side="left", padx=(0, 8))
+        self.btn_git_commit = ttk.Button(actions, text="Git Add + Commit", command=self.git_add_commit, state="disabled")
+        self.btn_git_commit.pack(side="left")
+        self.lbl_status = ttk.Label(root, text="", wraplength=900)
+        self.lbl_status.pack(side="top", fill="x", pady=(0, 4))
 
-        right = ttk.Frame(root)
-        right.pack(side="right", fill="both", expand=False)
+        body = ttk.Frame(root)
+        body.pack(fill="both", expand=True)
+        body.grid_rowconfigure(0, weight=1)
+        body.grid_columnconfigure(0, weight=3, minsize=540)
+        body.grid_columnconfigure(1, weight=2, minsize=430)
+
+        # Scroll only the data form; toolbar stays visible.
+        left_outer = ttk.Frame(body)
+        left_outer.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+        canvas = tk.Canvas(left_outer, highlightthickness=0, borderwidth=0)
+        scroll = ttk.Scrollbar(left_outer, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=scroll.set)
+        scroll.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+        left = ttk.Frame(canvas)
+        window = canvas.create_window((0, 0), window=left, anchor="nw")
+        left.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>", lambda e: canvas.itemconfigure(window, width=e.width))
+
+        right = ttk.Frame(body)
+        right.grid(row=0, column=1, sticky="nsew")
 
         # --- FORM ---
-        form = ttk.LabelFrame(left, text="Accommodation details", padding=10)
-        form.pack(fill="both", expand=True)
+        form = ttk.LabelFrame(left, text="Accommodation details", padding=6)
+        form.pack(fill="x")
 
         # row helper
         def row(label, widget, r):
-            ttk.Label(form, text=label).grid(row=r, column=0, sticky="w", padx=(0,8), pady=4)
-            widget.grid(row=r, column=1, sticky="ew", pady=4)
+            ttk.Label(form, text=label).grid(row=r, column=0, sticky="w", padx=(0,8), pady=2)
+            widget.grid(row=r, column=1, sticky="ew", pady=2)
             form.grid_columnconfigure(1, weight=1)
 
         self.var_title_en = tk.StringVar()
@@ -154,8 +195,7 @@ class App(tk.Tk):
         self.var_owner_id = tk.StringVar()
         self.var_owner_code = tk.StringVar()
 
-        self.var_lat = tk.StringVar()
-        self.var_lon = tk.StringVar()
+        self.var_gps = tk.StringVar()
         self.var_dist_override = tk.StringVar()  # optional
 
         # booleans
@@ -186,9 +226,9 @@ class App(tk.Tk):
         row("Address", ttk.Entry(form, textvariable=self.var_address), 5)
 
         contact = ttk.Frame(form)
-        ttk.Entry(contact, textvariable=self.var_phone, width=18).pack(side="left")
+        ttk.Entry(contact, textvariable=self.var_phone, width=15).pack(side="left")
         ttk.Label(contact, text="  Email").pack(side="left")
-        ttk.Entry(contact, textvariable=self.var_email, width=25).pack(side="left", padx=(6,0))
+        ttk.Entry(contact, textvariable=self.var_email, width=20).pack(side="left", padx=(6,0))
         row("Phone + Email", contact, 6)
 
         row("Website", ttk.Entry(form, textvariable=self.var_website), 7)
@@ -209,35 +249,30 @@ class App(tk.Tk):
 
         facts = ttk.Frame(form)
         ttk.Label(facts, text="Guests").pack(side="left")
-        ttk.Entry(facts, textvariable=self.var_guests, width=6).pack(side="left", padx=(6,12))
+        ttk.Entry(facts, textvariable=self.var_guests, width=4).pack(side="left", padx=(3,6))
         ttk.Label(facts, text="SizeSqm").pack(side="left")
-        ttk.Entry(facts, textvariable=self.var_size, width=6).pack(side="left", padx=(6,12))
+        ttk.Entry(facts, textvariable=self.var_size, width=4).pack(side="left", padx=(3,6))
         ttk.Label(facts, text="Bedrooms").pack(side="left")
-        ttk.Entry(facts, textvariable=self.var_bedrooms, width=6).pack(side="left", padx=(6,12))
+        ttk.Entry(facts, textvariable=self.var_bedrooms, width=4).pack(side="left", padx=(3,6))
         ttk.Label(facts, text="Bathrooms").pack(side="left")
-        ttk.Entry(facts, textvariable=self.var_bathrooms, width=6).pack(side="left", padx=(6,12))
+        ttk.Entry(facts, textvariable=self.var_bathrooms, width=4).pack(side="left", padx=(3,6))
         row("Quick facts", facts, 10)
 
         row("View", ttk.Entry(form, textvariable=self.var_view), 11)
 
         owner = ttk.Frame(form)
-        ttk.Entry(owner, textvariable=self.var_owner_id, width=18).pack(side="left")
+        ttk.Entry(owner, textvariable=self.var_owner_id, width=15).pack(side="left")
         ttk.Label(owner, text="  Code").pack(side="left")
         ttk.Entry(owner, textvariable=self.var_owner_code, width=10).pack(side="left", padx=(6,0))
         row("Owner", owner, 12)
 
-        geo = ttk.Frame(form)
-        ttk.Label(geo, text="Lat").pack(side="left")
-        ttk.Entry(geo, textvariable=self.var_lat, width=14).pack(side="left", padx=(6,12))
-        ttk.Label(geo, text="Lon").pack(side="left")
-        ttk.Entry(geo, textvariable=self.var_lon, width=14).pack(side="left", padx=(6,12))
-        row("Geo", geo, 13)
+        row("GPS coordinates (lat, lon)", ttk.Entry(form, textvariable=self.var_gps), 13)
 
-        row("Distance override (meters, optional)", ttk.Entry(form, textvariable=self.var_dist_override), 14)
+        row("Distance override (m, optional)", ttk.Entry(form, textvariable=self.var_dist_override), 14)
 
         # amenities checkboxes
-        amen = ttk.LabelFrame(form, text="Amenities", padding=8)
-        amen.grid(row=15, column=0, columnspan=2, sticky="ew", pady=(10,6))
+        amen = ttk.LabelFrame(form, text="Amenities", padding=4)
+        amen.grid(row=15, column=0, columnspan=2, sticky="ew", pady=(5,3))
         for c in range(4):
             amen.grid_columnconfigure(c, weight=1)
 
@@ -256,8 +291,8 @@ class App(tk.Tk):
             ttk.Checkbutton(amen, text=label, variable=var).grid(row=i//3, column=i%3, sticky="w", padx=6, pady=2)
 
         # descriptions
-        desc_frame = ttk.LabelFrame(left, text="Descriptions", padding=10)
-        desc_frame.pack(fill="both", expand=True, pady=(10,0))
+        desc_frame = ttk.LabelFrame(left, text="Descriptions", padding=6)
+        desc_frame.pack(fill="both", expand=True, pady=(5,0))
 
         ttk.Label(desc_frame, text="Description EN").grid(row=0, column=0, sticky="w")
         ttk.Label(desc_frame, text="Description RO").grid(row=0, column=1, sticky="w", padx=(10,0))
@@ -265,8 +300,8 @@ class App(tk.Tk):
         desc_frame.grid_columnconfigure(1, weight=1)
         desc_frame.grid_rowconfigure(1, weight=1)
 
-        self.txt_desc_en = tk.Text(desc_frame, height=8, wrap="word")
-        self.txt_desc_ro = tk.Text(desc_frame, height=8, wrap="word")
+        self.txt_desc_en = tk.Text(desc_frame, height=6, width=24, wrap="word")
+        self.txt_desc_ro = tk.Text(desc_frame, height=6, width=24, wrap="word")
         self.txt_desc_en.grid(row=1, column=0, sticky="nsew")
         self.txt_desc_ro.grid(row=1, column=1, sticky="nsew", padx=(10,0))
 
@@ -280,25 +315,13 @@ class App(tk.Tk):
         self.lbl_count = ttk.Label(img_box, text="Selected: 0 images")
         self.lbl_count.pack(anchor="w")
 
-        self.list_images = tk.Listbox(img_box, height=12)
+        self.list_images = tk.Listbox(img_box, height=7, width=38)
         self.list_images.pack(fill="both", expand=True, pady=8)
         self.list_images.bind("<<ListboxSelect>>", self.on_select_preview)
 
         ttk.Label(img_box, text="Preview").pack(anchor="w", pady=(6,2))
         self.lbl_preview = ttk.Label(img_box)
         self.lbl_preview.pack()
-
-        # --- bottom actions ---
-        actions = ttk.Frame(root)
-        actions.pack(fill="x", pady=(12,0))
-
-        ttk.Button(actions, text="Generate files", command=self.generate).pack(side="right")
-        self.btn_git_commit = ttk.Button(actions, text="Git Add + Commit", command=self.git_add_commit, state="disabled")
-        self.btn_git_commit.pack(side="right", padx=8)
-        ttk.Button(actions, text="Validate", command=self.validate_only).pack(side="right", padx=8)
-
-        self.lbl_status = ttk.Label(actions, text="")
-        self.lbl_status.pack(side="left")
 
     def autofill_slug(self):
         title = self.var_title_en.get().strip()
@@ -341,7 +364,7 @@ class App(tk.Tk):
         try:
             with Image.open(path) as im:
                 im = im.convert("RGB")
-                im.thumbnail((480, 270))
+                im.thumbnail((400, 225))
                 self.preview_imgtk = ImageTk.PhotoImage(im)
                 self.lbl_preview.configure(image=self.preview_imgtk)
         except Exception as e:
@@ -372,6 +395,10 @@ class App(tk.Tk):
             return False, "Slug invalid. Folosește litere mici, cifre și _."
         if (self.acc_root / slug).exists():
             return False, f"Există deja folderul pentru slug: {slug}"
+        try:
+            parse_coordinates(self.var_gps.get())
+        except ValueError as e:
+            return False, str(e)
         if not self.image_files:
             return False, "Selectează cel puțin o imagine."
         return True, ""
@@ -383,6 +410,7 @@ class App(tk.Tk):
             return
 
         acc_id = self.var_slug.get().strip()
+        lat, lon = parse_coordinates(self.var_gps.get())
 
         # load index fresh (avoid stale)
         main_index = load_json(self.index_path)
@@ -445,8 +473,8 @@ class App(tk.Tk):
             "ownerId": self.var_owner_id.get().strip(),
             "ownerCode": self.var_owner_code.get().strip(),
 
-            "lat": parse_float(self.var_lat.get(), 0.0),
-            "lon": parse_float(self.var_lon.get(), 0.0),
+            "lat": lat,
+            "lon": lon,
 
             "descriptionEn": description_en,
             "descriptionRo": description_ro,
