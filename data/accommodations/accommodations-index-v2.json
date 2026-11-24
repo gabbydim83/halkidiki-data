@@ -1140,5 +1140,19 @@
     "guests": 10,
     "bedrooms": 4,
     "bathrooms": 2
+  },
+  {
+    "id": "premium_apartment_in_nea_kallikrateia",
+    "zone": "Thessaloniki",
+    "beachSlug": "vergia-beach",
+    "titleEn": "Premium Apartment in Nea Kallikrateia",
+    "titleRo": "Premium Apartment in Nea Kallikrateia",
+    "image": "https://raw.githubusercontent.com/gabridim18-lab/halkidiki-data/main/data/accommodations/premium_apartment_in_nea_kallikrateia/images/premium_apartment_in_nea_kallikrateia.webp",
+    "category": "family_friendly",
+    "rating": 10.0,
+    "featured": true,
+    "guests": 6,
+    "bedrooms": 1,
+    "bathrooms": 1
   }
 ]
